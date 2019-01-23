@@ -69,7 +69,7 @@ public class MainActivityFragment extends Fragment {
     private final SensorEventListener sensorEventListener = new SensorEventListener() {
         @Override
         public void onSensorChanged(SensorEvent sensorEvent) {
-
+            // check
         }
 
         @Override
