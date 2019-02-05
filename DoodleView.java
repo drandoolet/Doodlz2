@@ -9,6 +9,7 @@ import android.graphics.Path;
 import android.graphics.Point;
 import android.support.annotation.Nullable;
 import android.util.AttributeSet;
+import android.view.MotionEvent;
 import android.view.View;
 
 import java.util.HashMap;
@@ -46,5 +47,73 @@ public class DoodleView extends View {
         bitmap = Bitmap.createBitmap(getWidth(), getHeight(), Bitmap.Config.ARGB_8888);
         bitmapCanvas = new Canvas(bitmap);
         bitmap.eraseColor(Color.WHITE);
+    }
+
+    public void clear() {
+        pathMap.clear();
+        previousPointMap.clear();
+        bitmap.eraseColor(Color.WHITE);
+        invalidate();
+    }
+
+    public void setDrawingColor(int color) {
+        paintLine.setColor(color);
+    }
+
+    public int getDrawingColor() {
+        return paintLine.getColor();
+    }
+
+    public void setLineWidth(int width) {
+        paintLine.setStrokeWidth(width);
+    }
+
+    public int getLineWidth() {
+        return (int) paintLine.getStrokeWidth();
+    }
+
+    @Override
+    protected void onDraw(Canvas canvas) {
+        canvas.drawBitmap(bitmap, 0, 0, paintScreen); // repaint background
+
+        for (Integer key : pathMap.keySet()) // paint each line
+            canvas.drawPath(pathMap.get(key), paintLine);
+    }
+
+    @Override
+    public boolean onTouchEvent(MotionEvent event) {
+        int action = event.getActionMasked(); // action type
+        int actionIndex = event.getActionIndex(); // action index (finger idx)
+
+        if (action == MotionEvent.ACTION_DOWN || action == MotionEvent.ACTION_POINTER_DOWN) {
+            touchStarted(event.getX(actionIndex), event.getY(actionIndex), event.getPointerId(actionIndex));
+        } else if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_POINTER_UP) {
+            touchEnded(event.getPointerId(actionIndex));
+        } else {
+            touchMoved(event);
+        }
+
+        invalidate();
+        return true;
+    }
+
+    private void touchStarted(float x, float y, int lineID) {
+        Path path;
+        Point point;
+
+        if (pathMap.containsKey(lineID)) {
+            path = pathMap.get(lineID);
+            path.reset();
+            point = previousPointMap.get(lineID);
+        } else {
+            path = new Path();
+            pathMap.put(lineID, path);
+            point = new Point();
+            previousPointMap.put(lineID, point);
+        }
+
+        path.moveTo(x, y);
+        point.x = (int) x;
+        point.y = (int) y;
     }
 }
