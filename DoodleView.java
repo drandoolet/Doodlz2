@@ -7,10 +7,14 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.Point;
+import android.provider.MediaStore;
 import android.support.annotation.Nullable;
+import android.support.v4.print.PrintHelper;
 import android.util.AttributeSet;
+import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
+import android.widget.Toast;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -38,9 +42,31 @@ public class DoodleView extends View {
         paintLine.setStrokeCap(Paint.Cap.ROUND);
     }
 
-    public void saveImage() {}
+    public void saveImage() {
+        final String name = "Doodlz "+System.currentTimeMillis()+".jpg";
+        String location = MediaStore.Images.Media.insertImage(getContext().getContentResolver(), bitmap,
+                name, "Doodlz Drawing");
 
-    public void printImage() {}
+        Toast message = Toast.makeText(getContext(),
+                (location != null ? R.string.message_saved : R.string.message_error_saving),
+                Toast.LENGTH_SHORT);
+        message.setGravity(Gravity.CENTER, message.getXOffset()/2, message.getYOffset()/2);
+        message.show();
+    }
+
+    public void printImage() {
+        if (PrintHelper.systemSupportsPrint()) {
+            PrintHelper printHelper = new PrintHelper(getContext());
+            printHelper.setScaleMode(PrintHelper.SCALE_MODE_FIT);
+            printHelper.printBitmap("Doodlz image", bitmap);
+        } else {
+            Toast message = Toast.makeText(getContext(),
+                    R.string.message_error_printing,
+                    Toast.LENGTH_SHORT);
+            message.setGravity(Gravity.CENTER, message.getXOffset()/2, message.getYOffset()/2);
+            message.show();
+        }
+    }
 
     @Override
     public void onSizeChanged(int w, int h, int oldW, int oldH) {
@@ -115,5 +141,35 @@ public class DoodleView extends View {
         path.moveTo(x, y);
         point.x = (int) x;
         point.y = (int) y;
+    }
+
+    private void touchMoved(MotionEvent event) {
+        for (int i=0; i<event.getPointerCount(); i++) {
+            int pointerID = event.getPointerId(i);
+            int pointerIndex = event.findPointerIndex(pointerID);
+
+            if (pathMap.containsKey(pointerID)) {
+                float newX = event.getX(pointerIndex);
+                float newY = event.getY(pointerIndex);
+
+                Path path = pathMap.get(pointerID);
+                Point point = previousPointMap.get(pointerID);
+
+                float deltaX = Math.abs(newX - point.x);
+                float deltaY = Math.abs(newY - point.y);
+
+                if (deltaX >= TOUCH_TOLERANCE || deltaY >= TOUCH_TOLERANCE) {
+                    path.quadTo(point.x, point.y, (newX + point.x)/2, (newY + point.y)/2);
+                    point.x = (int) newX;
+                    point.y = (int) newY;
+                }
+            }
+        }
+    }
+
+    private void touchEnded(int lineID) {
+        Path path = pathMap.get(lineID);
+        bitmapCanvas.drawPath(path, paintLine);
+        path.reset();
     }
 }
